@@ -1,5 +1,5 @@
 Name: nfcd-dbuslog-plugin
-Version: 1.0.0
+Version: 1.0.1
 Release: 0
 Summary: nfcd logging plugin
 License: BSD

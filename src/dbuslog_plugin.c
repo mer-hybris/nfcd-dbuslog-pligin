@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2018-2020 Jolla Ltd.
- * Copyright (C) 2018-2020 Slava Monich <slava.monich@jolla.com>
+ * Copyright (C) 2018-2021 Jolla Ltd.
+ * Copyright (C) 2018-2021 Slava Monich <slava.monich@jolla.com>
  *
  * You may use this file under the terms of BSD license as follows:
  *
@@ -34,6 +34,7 @@
 
 #include <nfc_plugin_impl.h>
 #include <nfc_manager.h>
+#include <nfc_version.h>
 
 #include <dbuslog_server_gio.h>
 #include <dbuslog_util.h>
@@ -137,20 +138,23 @@ dbus_log_plugin_add_category(
     NfcPlugin* plugin,
     GLogModule* log)
 {
-    gulong flags = 0;
+    /* A weak symbol may actually be NULL */
+    if (log) {
+        gulong flags = 0;
 
-    GDEBUG("Adding \"%s\"", log->name);
-    g_hash_table_replace(self->log_modules, g_strdup(log->name),
-        dbus_log_plugin_category_new(plugin, log));
-    if (!(log->flags & GLOG_FLAG_DISABLE)) {
-        flags |= (DBUSLOG_CATEGORY_FLAG_ENABLED |
-            DBUSLOG_CATEGORY_FLAG_ENABLED_BY_DEFAULT);
+        GDEBUG("Adding \"%s\"", log->name);
+        g_hash_table_replace(self->log_modules, g_strdup(log->name),
+            dbus_log_plugin_category_new(plugin, log));
+        if (!(log->flags & GLOG_FLAG_DISABLE)) {
+            flags |= (DBUSLOG_CATEGORY_FLAG_ENABLED |
+                DBUSLOG_CATEGORY_FLAG_ENABLED_BY_DEFAULT);
+        }
+        if (log->flags & GLOG_FLAG_HIDE_NAME) {
+            flags |= DBUSLOG_CATEGORY_FLAG_HIDE_NAME;
+        }
+        dbus_log_server_add_category(self->logserver, log->name,
+            dbus_log_level_from_gutil(log->level), flags);
     }
-    if (log->flags & GLOG_FLAG_HIDE_NAME) {
-        flags |= DBUSLOG_CATEGORY_FLAG_HIDE_NAME;
-    }
-    dbus_log_server_add_category(self->logserver, log->name,
-        dbus_log_level_from_gutil(log->level), flags);
 }
 
 /*==========================================================================*
@@ -238,6 +242,11 @@ dbus_log_plugin_start(
     GVERBOSE("Starting");
     dbus_log_plugin_add_category(self, NULL, &gutil_log_default);
     dbus_log_plugin_add_category(self, NULL, &NFC_CORE_LOG_MODULE);
+#if NFC_CORE_VERSION >= NFC_VERSION_WORD(1,1,0)
+    dbus_log_plugin_add_category(self, NULL, &NFC_LLC_LOG_MODULE);
+    dbus_log_plugin_add_category(self, NULL, &NFC_PEER_LOG_MODULE);
+    dbus_log_plugin_add_category(self, NULL, &NFC_SNEP_LOG_MODULE);
+#endif /* NFC_CORE_VERSION >= 1.1.0 */
     /* dbus_log_plugin_add_category(self, &DBUSACCESS_LOG_MODULE); */
     for (i = 0; plugins[i]; i++) {
         NfcPlugin* plugin = plugins[i];

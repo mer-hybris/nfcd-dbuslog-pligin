@@ -1,33 +1,38 @@
 /*
+ * Copyright (C) 2018-2024 Slava Monich <slava@monich.com>
  * Copyright (C) 2018-2021 Jolla Ltd.
- * Copyright (C) 2018-2021 Slava Monich <slava.monich@jolla.com>
- *
- * You may use this file under the terms of BSD license as follows:
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  *
- *   1. Redistributions of source code must retain the above copyright
- *      notice, this list of conditions and the following disclaimer.
- *   2. Redistributions in binary form must reproduce the above copyright
- *      notice, this list of conditions and the following disclaimer in the
- *      documentation and/or other materials provided with the distribution.
- *   3. Neither the names of the copyright holders nor the names of its
- *      contributors may be used to endorse or promote products derived
- *      from this software without specific prior written permission.
+ *  1. Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS
- * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
- * THE POSSIBILITY OF SUCH DAMAGE.
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer
+ *     in the documentation and/or other materials provided with the
+ *     distribution.
+ *
+ *  3. Neither the names of the copyright holders nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the authors and should not be interpreted as representing
+ * any official policies, either expressed or implied.
  */
 
 #define GLOG_MODULE_NAME dbus_log_log
@@ -66,10 +71,11 @@ typedef struct dbus_log_plugin {
     GHashTable* log_modules;
 } DBusLogPlugin;
 
+#define THIS_TYPE dbus_log_plugin_get_type()
+#define THIS(obj) G_TYPE_CHECK_INSTANCE_CAST((obj),THIS_TYPE,DBusLogPlugin)
+#define PARENT_CLASS dbus_log_plugin_parent_class
+
 G_DEFINE_TYPE(DBusLogPlugin, dbus_log_plugin, NFC_TYPE_PLUGIN)
-#define DBUS_LOG_TYPE_PLUGIN (dbus_log_plugin_get_type())
-#define DBUS_LOG_PLUGIN(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), \
-        DBUS_LOG_TYPE_PLUGIN, DBusLogPlugin))
 
 static DBusLogPlugin* dbus_log_plugin_active;
 
@@ -168,7 +174,7 @@ dbus_log_plugin_category_enabled(
     const char* name,
     gpointer user_data)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(user_data);
+    DBusLogPlugin* self = THIS(user_data);
     DBusLogPluginCategory* cat = g_hash_table_lookup(self->log_modules, name);
 
     GASSERT(cat);
@@ -184,7 +190,7 @@ dbus_log_plugin_category_disabled(
     const char* name,
     gpointer user_data)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(user_data);
+    DBusLogPlugin* self = THIS(user_data);
     DBusLogPluginCategory* cat = g_hash_table_lookup(self->log_modules, name);
 
     GASSERT(cat);
@@ -201,7 +207,7 @@ dbus_log_plugin_category_level_changed(
     DBUSLOG_LEVEL dbus_level,
     gpointer user_data)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(user_data);
+    DBusLogPlugin* self = THIS(user_data);
     const int level = dbus_log_level_to_gutil(dbus_level);
     DBusLogPluginCategory* cat = g_hash_table_lookup(self->log_modules, name);
 
@@ -235,7 +241,7 @@ dbus_log_plugin_start(
     NfcPlugin* plugin,
     NfcManager* manager)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(plugin);
+    DBusLogPlugin* self = THIS(plugin);
     NfcPlugin* const* plugins = nfc_manager_plugins(manager);
     guint i;
 
@@ -247,7 +253,6 @@ dbus_log_plugin_start(
     dbus_log_plugin_add_category(self, NULL, &NFC_PEER_LOG_MODULE);
     dbus_log_plugin_add_category(self, NULL, &NFC_SNEP_LOG_MODULE);
 #endif /* NFC_CORE_VERSION >= 1.1.0 */
-    /* dbus_log_plugin_add_category(self, &DBUSACCESS_LOG_MODULE); */
     for (i = 0; plugins[i]; i++) {
         NfcPlugin* plugin = plugins[i];
         const NfcPluginDesc* desc = plugin->desc;
@@ -287,7 +292,7 @@ void
 dbus_log_plugin_stop(
     NfcPlugin* plugin)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(plugin);
+    DBusLogPlugin* self = THIS(plugin);
 
     GVERBOSE("Stopping");
     dbus_log_server_stop(self->logserver);
@@ -320,7 +325,7 @@ void
 dbus_log_plugin_finalize(
     GObject* plugin)
 {
-    DBusLogPlugin* self = DBUS_LOG_PLUGIN(plugin);
+    DBusLogPlugin* self = THIS(plugin);
 
     dbus_log_server_unref(self->logserver);
     g_hash_table_destroy(self->log_modules);
@@ -343,7 +348,7 @@ dbus_log_plugin_create(
     void)
 {
     GDEBUG("Plugin loaded");
-    return g_object_new(DBUS_LOG_TYPE_PLUGIN, NULL);
+    return g_object_new(THIS_TYPE, NULL);
 }
 
 NFC_PLUGIN_DEFINE(dbus_log, "Logging over D-Bus", dbus_log_plugin_create)
